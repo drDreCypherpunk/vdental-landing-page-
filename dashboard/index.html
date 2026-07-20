@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leads Dashboard — V Dental Implant Center</title>
+<style>
+  :root{ --ink:#151A17; --ink-soft:#5B6862; --forest:#2E4A33; --gold:#C9992F; --line:#E5E1D6; --bg:#FCFBF8; }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:-apple-system,Segoe UI,Manrope,sans-serif; background:var(--bg); color:var(--ink);}
+  header{background:#0D1210; color:#fff; padding:20px 28px; display:flex; align-items:center; justify-content:space-between;}
+  header h1{font-size:18px; margin:0; font-weight:600;}
+  header .sub{font-size:12px; color:#9FADA5; margin-top:2px;}
+  main{max-width:1180px; margin:0 auto; padding:24px 28px;}
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap;}
+  .stat{background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 18px; font-size:13px;}
+  .stat b{display:block; font-size:20px; color:var(--forest);}
+  table{width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden; border:1px solid var(--line);}
+  th,td{text-align:left; padding:12px 14px; font-size:13px; border-bottom:1px solid var(--line);}
+  th{background:#F2EEE4; font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.04em; color:var(--ink-soft);}
+  tr:last-child td{border-bottom:none;}
+  select{padding:6px 8px; border-radius:6px; border:1px solid var(--line); font-size:12.5px;}
+  button.del{background:none; border:none; color:#B23A3A; cursor:pointer; font-size:12.5px;}
+  .empty{padding:40px; text-align:center; color:var(--ink-soft); font-size:14px;}
+  a.tag{font-size:12px; color:var(--forest); text-decoration:none;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Leads Dashboard</h1>
+    <div class="sub">V Dental and Implant Center — Ad Campaign Leads</div>
+  </div>
+  <div class="stat">Total Leads<b id="totalCount">0</b></div>
+</header>
+<main>
+  <div class="toolbar">
+    <div class="sub" style="color:var(--ink-soft); font-size:12.5px;">Newest first. Update status as you follow up.</div>
+    <button onclick="loadLeads()" style="padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; font-size:12.5px;">↻ Refresh</button>
+  </div>
+  <table id="leadsTable">
+    <thead>
+      <tr>
+        <th>Name</th><th>Phone</th><th>Source</th><th>Campaign</th><th>Received</th><th>Status</th><th></th>
+      </tr>
+    </thead>
+    <tbody id="leadsBody"></tbody>
+  </table>
+  <div id="emptyState" class="empty" style="display:none;">No leads yet. Once the landing page form is submitted, entries will appear here.</div>
+</main>
+
+<script>
+  async function loadLeads(){
+    const res = await fetch('/api/leads');
+    if(res.status === 401){ document.body.innerHTML = '<p style="padding:40px;font-family:sans-serif;">Please log in to view the dashboard.</p>'; return; }
+    const leads = await res.json();
+    document.getElementById('totalCount').textContent = leads.length;
+    const body = document.getElementById('leadsBody');
+    const empty = document.getElementById('emptyState');
+    body.innerHTML = '';
+    if(!leads.length){ empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    leads.forEach(function(l){
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escapeHtml(l.name) + '</td>' +
+        '<td><a class="tag" href="tel:' + escapeHtml(l.phone) + '">' + escapeHtml(l.phone) + '</a></td>' +
+        '<td>' + escapeHtml(l.source || '-') + '</td>' +
+        '<td>' + escapeHtml([l.utm_source, l.utm_campaign].filter(Boolean).join(' / ') || '-') + '</td>' +
+        '<td>' + escapeHtml(l.created_at) + '</td>' +
+        '<td><select data-id="' + l.id + '">' +
+          ['New','Contacted','Confirmed','Attended','Lost'].map(function(s){
+            return '<option value="' + s + '"' + (s === l.status ? ' selected' : '') + '>' + s + '</option>';
+          }).join('') +
+        '</select></td>' +
+        '<td><button class="del" data-id="' + l.id + '">Delete</button></td>';
+      body.appendChild(tr);
+    });
+
+    body.querySelectorAll('select').forEach(function(sel){
+      sel.addEventListener('change', function(){
+        fetch('/api/leads/' + sel.dataset.id, {
+          method: 'PATCH',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({status: sel.value})
+        });
+      });
+    });
+    body.querySelectorAll('button.del').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(!confirm('Delete this lead?')) return;
+        fetch('/api/leads/' + btn.dataset.id, {method:'DELETE'}).then(loadLeads);
+      });
+    });
+  }
+
+  function escapeHtml(str){
+    return String(str == null ? '' : str).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  loadLeads();
+</script>
+</body>
+</html>

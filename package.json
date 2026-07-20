@@ -1,0 +1,19 @@
+{
+  "name": "v-dental-landing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "V Dental and Implant Center — paid ads landing page with lead capture and dashboard",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "compression": "^1.8.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
